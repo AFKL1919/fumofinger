@@ -2,17 +2,19 @@ package model
 
 import (
 	"afkl/fumofinger/utils"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
 )
 
-type MatchResponse struct {
-	Url     string
-	Body    []byte
-	Headers http.Header
-	Cert    []byte
+type ResponseForCapture struct {
+	Url           string
+	Body          []byte
+	HeadersString string
+	HeadersMap    http.Header
+	Cert          []byte
 }
 
 type TargetList struct {
@@ -75,7 +77,7 @@ func (list TargetList) SplitTargetList(blockNum int) [][]string {
 	return segmens
 }
 
-func RequestTarget(url string) (*MatchResponse, error) {
+func RequestTarget(url string) (*ResponseForCapture, error) {
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -93,15 +95,25 @@ func RequestTarget(url string) (*MatchResponse, error) {
 		return nil, err
 	}
 
-	return &MatchResponse{
-		Url:     url,
-		Body:    body,
-		Headers: resp.Header,
-		Cert:    utils.GetCerts(resp),
+	headers := ""
+	for key, values := range resp.Header {
+		tmp := ""
+		for _, value := range values {
+			tmp += value
+		}
+		headers += fmt.Sprintf("%s: %s\r\n", key, tmp)
+	}
+
+	return &ResponseForCapture{
+		Url:           url,
+		Body:          body,
+		HeadersString: headers,
+		HeadersMap:    resp.Header,
+		Cert:          utils.GetCerts(resp),
 	}, nil
 }
 
-func ReMatchBody(resp MatchResponse, re string) []string {
+func ReMatchBody(resp ResponseForCapture, re string) []string {
 	compileRE := regexp.MustCompile(re)
 	return compileRE.FindAllString(string(resp.Body), -1)
 }

@@ -38,7 +38,7 @@ func init() {
  * 0 => banner
  * 1 => title
  */
-func captureBody(resp MatchResponse, rule FoFaRule, captureType int) bool {
+func captureBody(resp ResponseForCapture, rule FoFaRule, captureType int) bool {
 	var re string
 	switch captureType {
 	case 0:
@@ -64,11 +64,11 @@ func captureBody(resp MatchResponse, rule FoFaRule, captureType int) bool {
 	return true
 }
 
-func Capture(resp MatchResponse, splitFoFaFinger FoFaFinger) ([]FoFaFingerBlock, bool) {
+func Capture(resp ResponseForCapture, fofa FoFaFinger) ([]FoFaFingerBlock, bool) {
 	matchFinger := []FoFaFingerBlock{}
 	isSubRuleMatched := true
 	isAllSubRulesMatched := true
-	for _, block := range splitFoFaFinger {
+	for _, block := range fofa {
 		for _, rule := range block.Rules {
 			for _, subRule := range rule {
 				switch strings.Split(subRule.Match, "_")[0] {
@@ -84,12 +84,15 @@ func Capture(resp MatchResponse, splitFoFaFinger FoFaFinger) ([]FoFaFingerBlock,
 						isSubRuleMatched = false
 					}
 				case "header":
-					if resp.Headers.Get(subRule.Content) == "" {
+					if !strings.Contains(
+						strings.ToLower(resp.HeadersString),
+						strings.ToLower(subRule.Content),
+					) {
 						isSubRuleMatched = false
 					}
 				case "server":
 					if !strings.Contains(
-						strings.ToLower(resp.Headers.Get("Server")),
+						strings.ToLower(resp.HeadersMap.Get("Server")),
 						strings.ToLower(subRule.Content),
 					) {
 						isSubRuleMatched = false
